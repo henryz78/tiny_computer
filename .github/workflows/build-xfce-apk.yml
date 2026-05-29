@@ -84,7 +84,9 @@ jobs:
           mkdir -p assets
           rm -f assets/xa*
           cp ".build-assets/${PATCH_NAME}" assets/patch.tar.gz
-          split -b 98M ".build-assets/${ROOTFS_NAME}" assets/xa
+          (cd assets && split -b 98M "../.build-assets/${ROOTFS_NAME}")
+          echo "rootfs split files:"
+          ls -lh assets/xa*
 
           rootfs_bytes="$(du -cb assets/xa* | awk '/total$/ {print $1}')"
           echo "rootfs split bytes: ${rootfs_bytes}"
