@@ -68,7 +68,17 @@ jobs:
           set -euo pipefail
           rm -rf android/app/src/main/jniLibs/arm64-v8a
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
-          unzip -q ".build-assets/${JNILIBS_NAME}" -d android/app/src/main/jniLibs/arm64-v8a
+          unzip -q ".build-assets/${JNILIBS_NAME}" -d android/app/src/main/jniLibs
+          if [ -d android/app/src/main/jniLibs/jniLibs/arm64-v8a ]; then
+            cp -a android/app/src/main/jniLibs/jniLibs/arm64-v8a/. android/app/src/main/jniLibs/arm64-v8a/
+            rm -rf android/app/src/main/jniLibs/jniLibs
+          fi
+          if [ -d android/app/src/main/jniLibs/arm64-v8a/arm64-v8a ]; then
+            cp -a android/app/src/main/jniLibs/arm64-v8a/arm64-v8a/. android/app/src/main/jniLibs/arm64-v8a/
+            rm -rf android/app/src/main/jniLibs/arm64-v8a/arm64-v8a
+          fi
+          echo "jniLibs files:"
+          find android/app/src/main/jniLibs -maxdepth 3 -type f | sort
 
           mkdir -p assets
           rm -f assets/xa*
@@ -84,9 +94,17 @@ jobs:
 
           test -f assets/xaa
           test -f assets/patch.tar.gz
-          test -f android/app/src/main/jniLibs/arm64-v8a/libexec_proot.so
-          test -f android/app/src/main/jniLibs/arm64-v8a/libproot-loader.so
-          test -f android/app/src/main/jniLibs/arm64-v8a/libexec_busybox.so
+          required_libs=(
+            android/app/src/main/jniLibs/arm64-v8a/libexec_proot.so
+            android/app/src/main/jniLibs/arm64-v8a/libproot-loader.so
+            android/app/src/main/jniLibs/arm64-v8a/libexec_busybox.so
+          )
+          for lib in "${required_libs[@]}"; do
+            if [ ! -f "${lib}" ]; then
+              echo "Missing native library: ${lib}"
+              exit 1
+            fi
+          done
 
       - name: Build release APK
         run: flutter build apk --target-platform android-arm64 --split-per-abi --obfuscate --split-debug-info=hycomputer/sdi
