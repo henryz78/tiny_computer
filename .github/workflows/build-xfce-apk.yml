@@ -109,14 +109,14 @@ jobs:
             fi
           done
 
-      - name: Build release APK
-        run: flutter build apk --target-platform android-arm64 --split-per-abi --obfuscate --split-debug-info=hycomputer/sdi
+      - name: Build debug APK
+        run: flutter build apk --debug --target-platform android-arm64
 
       - name: Validate APK size
         shell: bash
         run: |
           set -euo pipefail
-          apk_path="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+          apk_path="build/app/outputs/flutter-apk/app-debug.apk"
           apk_bytes="$(stat -c%s "${apk_path}")"
           echo "apk bytes: ${apk_bytes}"
           if [ "${apk_bytes}" -lt "${MIN_APK_BYTES}" ]; then
@@ -128,4 +128,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hycomputer-xfce-${{ env.ARTIFACT_SUFFIX }}-apk
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
