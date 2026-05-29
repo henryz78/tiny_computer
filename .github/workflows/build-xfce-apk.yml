@@ -1,0 +1,103 @@
+name: Build XFCE APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      assets_tag:
+        description: GitHub Release tag containing build assets
+        required: true
+        default: hycomputer-assets-v1.1.0
+      artifact_suffix:
+        description: Optional suffix for the uploaded APK artifact
+        required: false
+        default: test
+
+env:
+  ASSETS_REPO: henryz78/tiny_computer
+  ROOTFS_NAME: debian-xfce.tar.xz
+  JNILIBS_NAME: jniLibs.zip
+  PATCH_NAME: patch.tar.gz
+  MIN_ROOTFS_BYTES: "850000000"
+  MIN_APK_BYTES: "850000000"
+
+jobs:
+  build-xfce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Download release build assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .build-assets
+          base_url="https://github.com/${ASSETS_REPO}/releases/download/${{ inputs.assets_tag }}"
+          curl --fail --location --retry 3 --output ".build-assets/${ROOTFS_NAME}" "${base_url}/${ROOTFS_NAME}"
+          curl --fail --location --retry 3 --output ".build-assets/${JNILIBS_NAME}" "${base_url}/${JNILIBS_NAME}"
+          curl --fail --location --retry 3 --output ".build-assets/${PATCH_NAME}" "${base_url}/${PATCH_NAME}"
+          ls -lh .build-assets
+
+      - name: Prepare native libraries and rootfs assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf android/app/src/main/jniLibs/arm64-v8a
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          unzip -q ".build-assets/${JNILIBS_NAME}" -d android/app/src/main/jniLibs/arm64-v8a
+
+          mkdir -p assets
+          rm -f assets/xa*
+          cp ".build-assets/${PATCH_NAME}" assets/patch.tar.gz
+          split -b 98M ".build-assets/${ROOTFS_NAME}" assets/xa
+
+          rootfs_bytes="$(du -cb assets/xa* | awk '/total$/ {print $1}')"
+          echo "rootfs split bytes: ${rootfs_bytes}"
+          if [ "${rootfs_bytes}" -lt "${MIN_ROOTFS_BYTES}" ]; then
+            echo "Rootfs split assets are too small. Refusing to build an empty APK."
+            exit 1
+          fi
+
+          test -f assets/xaa
+          test -f assets/patch.tar.gz
+          test -f android/app/src/main/jniLibs/arm64-v8a/libexec_proot.so
+          test -f android/app/src/main/jniLibs/arm64-v8a/libproot-loader.so
+          test -f android/app/src/main/jniLibs/arm64-v8a/libexec_busybox.so
+
+      - name: Build release APK
+        run: flutter build apk --target-platform android-arm64 --split-per-abi --obfuscate --split-debug-info=hycomputer/sdi
+
+      - name: Validate APK size
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_path="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+          apk_bytes="$(stat -c%s "${apk_path}")"
+          echo "apk bytes: ${apk_bytes}"
+          if [ "${apk_bytes}" -lt "${MIN_APK_BYTES}" ]; then
+            echo "APK is too small. This usually means rootfs assets were not included."
+            exit 1
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hycomputer-xfce-${{ inputs.artifact_suffix }}-apk
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
