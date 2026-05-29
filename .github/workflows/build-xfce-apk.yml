@@ -77,6 +77,7 @@ jobs:
             cp -a android/app/src/main/jniLibs/arm64-v8a/arm64-v8a/. android/app/src/main/jniLibs/arm64-v8a/
             rm -rf android/app/src/main/jniLibs/arm64-v8a/arm64-v8a
           fi
+          find android/app/src/main/jniLibs -maxdepth 1 -type f -name "*.so" -exec mv {} android/app/src/main/jniLibs/arm64-v8a/ \;
           echo "jniLibs files:"
           find android/app/src/main/jniLibs -maxdepth 3 -type f | sort
 
