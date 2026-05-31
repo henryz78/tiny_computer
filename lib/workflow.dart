@@ -76,7 +76,7 @@ class Util {
   //int defaultAudioPort = 4718: 默认pulseaudio端口(为了避免和其它软件冲突改成4718了，原默认4713)
   //bool autoLaunchVnc = true: 是否自动启动图形界面并跳转 以前只支持VNC就这么起名了
   //String lastDate: 上次启动软件的日期，yyyy-MM-dd
-  //bool isTerminalWriteEnabled = false
+  //bool isTerminalWriteEnabled = true
   //bool isTerminalCommandsEnabled = false 
   //int termMaxLines = 4095 终端最大行数
   //double termFontScale = 1 终端字体大小
@@ -106,7 +106,7 @@ class Util {
       case "defaultAudioPort" : return b ? G.prefs.getInt(key)! : (value){G.prefs.setInt(key, value); return value;}(4718);
       case "autoLaunchVnc" : return b ? G.prefs.getBool(key)! : (value){G.prefs.setBool(key, value); return value;}(true);
       case "lastDate" : return b ? G.prefs.getString(key)! : (value){G.prefs.setString(key, value); return value;}("1970-01-01");
-      case "isTerminalWriteEnabled" : return b ? G.prefs.getBool(key)! : (value){G.prefs.setBool(key, value); return value;}(false);
+      case "isTerminalWriteEnabled" : return b ? G.prefs.getBool(key)! : (value){G.prefs.setBool(key, value); return value;}(true);
       case "isTerminalCommandsEnabled" : return b ? G.prefs.getBool(key)! : (value){G.prefs.setBool(key, value); return value;}(false);
       case "termMaxLines" : return b ? G.prefs.getInt(key)! : (value){G.prefs.setInt(key, value); return value;}(4095);
       case "termFontScale" : return b ? G.prefs.getDouble(key)! : (value){G.prefs.setDouble(key, value); return value;}(1.0);
@@ -688,13 +688,12 @@ ${Localizations.localeOf(G.homePageStateContext).languageCode == 'zh' ? "" : "ec
       final String h = (min(s.width, s.height) * 0.75).round().toString();
       G.postCommand = """sed -i -E "s@(geometry)=.*@\\1=${w}x${h}@" /etc/tigervnc/vncserver-config-tmoe
 sed -i -E "s@^(VNC_RESOLUTION)=.*@\\1=${w}x${h}@" \$(command -v startvnc)""";
+      await G.prefs.setBool("isTerminalWriteEnabled", true);
+      await G.prefs.setBool("isTerminalCommandsEnabled", true);
+      await G.prefs.setBool("isStickyKey", false);
+      await G.prefs.setBool("wakelock", true);
       if (Localizations.localeOf(G.homePageStateContext).languageCode != 'zh') {
         G.postCommand += "\nlocaledef -c -i en_US -f UTF-8 en_US.UTF-8";
-        // For English users, assume they need to enable terminal write
-        await G.prefs.setBool("isTerminalWriteEnabled", true);
-        await G.prefs.setBool("isTerminalCommandsEnabled", true);
-        await G.prefs.setBool("isStickyKey", false);
-        await G.prefs.setBool("wakelock", true);
       }
       await G.prefs.setBool("getifaddrsBridge", (await DeviceInfoPlugin().androidInfo).version.sdkInt >= 31);
     }

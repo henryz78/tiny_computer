@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - test
-    paths:
-      - ".github/workflows/build-xfce-apk.yml"
   workflow_dispatch:
     inputs:
       assets_tag:
